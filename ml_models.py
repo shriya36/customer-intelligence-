@@ -43,15 +43,31 @@ class CustomerMLModels:
     def _prepare_features(self):
         """Prepare features for ML models"""
         
-        # Select numerical features for modeling
-        numerical_features = [
-            'age', 'annual_income', 'tenure_days', 'purchase_frequency',
-            'avg_order_value', 'recency', 'satisfaction_score', 'support_tickets',
-            'email_open_rate', 'email_click_rate', 'mobile_sessions', 'social_engagement_score'
+        # Define all possible numerical features
+        all_numerical_features = [
+            'age', 'tenure_days', 'purchase_frequency', 'total_spent', 
+            'recency', 'satisfaction_score', 'avg_order_value', 'support_tickets',
+            'annual_income', 'email_open_rate', 'email_click_rate', 
+            'mobile_sessions', 'social_engagement_score', 'has_mobile_app',
+            'social_media_follower'
         ]
         
+        # Only use features that actually exist in the dataframe
+        numerical_features = [f for f in all_numerical_features if f in self.df.columns]
+        
+        # Ensure we have at least some features to work with
+        if len(numerical_features) == 0:
+            raise ValueError("No valid numerical features found in the dataset")
+        
+        print(f"Using {len(numerical_features)} numerical features: {numerical_features}")
+        
         # Select categorical features
-        categorical_features = ['gender', 'acquisition_channel', 'seasonal_preference']
+        categorical_features = []
+        potential_categorical = ['gender', 'acquisition_channel', 'city']
+        
+        for feature in potential_categorical:
+            if feature in self.df.columns:
+                categorical_features.append(feature)
         
         # Prepare feature matrix
         X_numerical = self.df[numerical_features]
@@ -153,7 +169,10 @@ class CustomerMLModels:
             kmeans = KMeans(n_clusters=k, random_state=42, n_init=10)
             kmeans.fit(X_cluster_scaled)
             inertias.append(kmeans.inertia_)
-            silhouette_scores.append(silhouette_score(X_cluster_scaled, kmeans.labels_))
+            if len(np.unique(kmeans.labels_)) > 1:
+                silhouette_scores.append(silhouette_score(X_cluster_scaled, kmeans.labels_))
+            else:
+                silhouette_scores.append(0)
         
         # Choose optimal k (highest silhouette score)
         optimal_k = K_range[np.argmax(silhouette_scores)]
@@ -178,9 +197,9 @@ class CustomerMLModels:
             
             metrics[name] = {
                 'accuracy': accuracy_score(self.y_test_churn, y_pred),
-                'precision': precision_score(self.y_test_churn, y_pred),
-                'recall': recall_score(self.y_test_churn, y_pred),
-                'f1_score': f1_score(self.y_test_churn, y_pred)
+                'precision': precision_score(self.y_test_churn, y_pred, zero_division=0),
+                'recall': recall_score(self.y_test_churn, y_pred, zero_division=0),
+                'f1_score': f1_score(self.y_test_churn, y_pred, zero_division=0)
             }
         
         return metrics
@@ -346,19 +365,3 @@ class CustomerMLModels:
         }
         
         return summary
-
-if __name__ == "__main__":
-    # Test the ML models
-    from data_generator import generate_customer_data
-    
-    df = generate_customer_data(1000)
-    ml_models = CustomerMLModels(df)
-    
-    print("Model Summary:")
-    print(ml_models.get_model_summary())
-    
-    print("\nChurn Metrics:")
-    print(ml_models.get_churn_metrics())
-    
-    print("\nCLV Metrics:")
-    print(ml_models.get_clv_metrics())
