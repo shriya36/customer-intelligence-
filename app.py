@@ -209,44 +209,67 @@ def main():
             
             with col1:
                 # Customer distribution by age
-                fig_age = px.histogram(
-                    data, x='age', bins=20,
-                    title="Customer Age Distribution",
-                    color_discrete_sequence=['#1f77b4']
-                )
-                fig_age.update_layout(showlegend=False)
-                st.plotly_chart(fig_age, use_container_width=True)
+                if 'age' in data.columns:
+                    fig_age = px.histogram(
+                        data, x='age', nbins=20,
+                        title="Customer Age Distribution",
+                        color_discrete_sequence=['#1f77b4']
+                    )
+                    fig_age.update_layout(showlegend=False)
+                    st.plotly_chart(fig_age, use_container_width=True)
+                else:
+                    st.info("Age data not available")
                 
-                # Revenue by acquisition channel
-                channel_revenue = data.groupby('acquisition_channel')['total_spent'].sum().sort_values(ascending=True)
-                fig_channel = px.bar(
-                    x=channel_revenue.values,
-                    y=channel_revenue.index,
-                    orientation='h',
-                    title="Revenue by Acquisition Channel",
-                    color_discrete_sequence=['#2ca02c']
-                )
-                st.plotly_chart(fig_channel, use_container_width=True)
+                # Revenue by acquisition channel  
+                if 'acquisition_channel' in data.columns and 'total_spent' in data.columns:
+                    channel_data = data.groupby('acquisition_channel')['total_spent'].sum().reset_index()
+                    channel_data = channel_data.sort_values('total_spent', ascending=True)
+                    fig_channel = px.bar(
+                        channel_data,
+                        x='total_spent',
+                        y='acquisition_channel',
+                        orientation='h',
+                        title="Revenue by Acquisition Channel",
+                        color_discrete_sequence=['#2ca02c']
+                    )
+                    st.plotly_chart(fig_channel, use_container_width=True)
+                else:
+                    if 'gender' in data.columns:
+                        segment_counts = pd.Series(data['gender']).value_counts()
+                        fig_gender = px.pie(
+                            values=segment_counts.values,
+                            names=segment_counts.index,
+                            title="Customer Distribution by Gender"
+                        )
+                        st.plotly_chart(fig_gender, use_container_width=True)
+                    else:
+                        st.info("Additional data not available")
             
             with col2:
                 # CLV distribution
-                fig_clv = px.histogram(
-                    data, x='total_spent', bins=30,
-                    title="Customer Lifetime Value Distribution",
-                    color_discrete_sequence=['#ff7f0e']
-                )
-                fig_clv.update_layout(showlegend=False)
-                st.plotly_chart(fig_clv, use_container_width=True)
+                if 'total_spent' in data.columns:
+                    fig_clv = px.histogram(
+                        data, x='total_spent', nbins=30,
+                        title="Customer Lifetime Value Distribution",
+                        color_discrete_sequence=['#ff7f0e']
+                    )
+                    fig_clv.update_layout(showlegend=False)
+                    st.plotly_chart(fig_clv, use_container_width=True)
+                else:
+                    st.info("CLV data not available")
                 
                 # Satisfaction vs Churn
-                fig_sat = px.box(
-                    data, x='churn', y='satisfaction_score',
-                    title="Satisfaction Score by Churn Status",
-                    color='churn',
-                    color_discrete_map={0: '#2ca02c', 1: '#d62728'}
-                )
-                fig_sat.update_xaxis(tickvals=[0, 1], ticktext=['Active', 'Churned'])
-                st.plotly_chart(fig_sat, use_container_width=True)
+                if 'churn' in data.columns and 'satisfaction_score' in data.columns:
+                    fig_sat = px.box(
+                        data, x='churn', y='satisfaction_score',
+                        title="Satisfaction Score by Churn Status",
+                        color='churn',
+                        color_discrete_map={0: '#2ca02c', 1: '#d62728'}
+                    )
+                    fig_sat.update_xaxes(tickvals=[0, 1], ticktext=['Active', 'Churned'])
+                    st.plotly_chart(fig_sat, use_container_width=True)
+                else:
+                    st.info("Satisfaction/churn data not available")
         
         with tab2:
             st.header("🎯 Churn Prediction Analysis")
@@ -295,7 +318,7 @@ def main():
                     churn_proba = ml_models.predict_churn_proba()
                     
                     fig_risk = px.histogram(
-                        x=churn_proba, bins=20,
+                        x=churn_proba, nbins=20,
                         title="Churn Risk Distribution",
                         labels={'x': 'Churn Probability', 'y': 'Number of Customers'},
                         color_discrete_sequence=['#ff7f0e']
